@@ -1,4 +1,5 @@
-import { Link } from 'expo-router';
+import { useSignIn } from '@clerk/clerk-expo';
+import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Image, ScrollView, Text, View } from 'react-native';
 
@@ -8,12 +9,40 @@ import Oauth from '~/components/Oauth';
 import { icons, images } from '~/constants';
 
 export default function SignUp() {
+  const { signIn, setActive, isLoaded } = useSignIn();
+  const router = useRouter();
+
   const [form, setForm] = useState({
     email: '',
     password: '',
   });
 
-  async function onSignInPress() {}
+  const onSignInPress = async () => {
+    if (!isLoaded) return;
+
+    // Start the sign-in process using the email and password provided
+    try {
+      const signInAttempt = await signIn.create({
+        identifier: form.email,
+        password: form.password,
+      });
+
+      // If sign-in process is complete, set the created session as active
+      // and redirect the user
+      if (signInAttempt.status === 'complete') {
+        await setActive({ session: signInAttempt.createdSessionId });
+        router.replace('/');
+      } else {
+        // If the status isn't complete, check why. User might need to
+        // complete further steps.
+        console.error(JSON.stringify(signInAttempt, null, 2));
+      }
+    } catch (err) {
+      // See https://clerk.com/docs/custom-flows/error-handling
+      // for more info on error handling
+      console.error(JSON.stringify(err, null, 2));
+    }
+  };
 
   return (
     <ScrollView className="flex-1 bg-white">
@@ -41,7 +70,7 @@ export default function SignUp() {
             secureTextEntry
             onChangeText={(value) => setForm({ ...form, password: value })}
           />
-          <CustomButton title="Sign Up" onPress={onSignInPress} className="mt-10" />
+          <CustomButton title="Sign In" onPress={onSignInPress} className="mt-10" />
 
           <Oauth />
 
